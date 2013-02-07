@@ -40,7 +40,7 @@ modularity.loadDependencies = function (dependencies, paths, ancestors, parent, 
     }
     var loaded = {};
     modularity.forEach(dependencies, function (dependency, next) {
-        if (dependency === 'callback') {
+        if (!dependency || dependency === 'callback') {
             return next();
         }
         if (dependency in cache) {

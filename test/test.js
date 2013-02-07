@@ -90,5 +90,13 @@ describe('Modularity', function () {
         });
     });
 
+    it('should handle the case when a module doesn\'t have any dependencies', function (done) {
+        loadTest(6, function (err, foo) {
+            assert(!err, err);
+            assert.equal(foo, 'foo');
+            done();
+        });
+    });
+
 });
 
