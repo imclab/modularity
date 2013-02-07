@@ -25,8 +25,10 @@ module.exports = function (express, database, config) {
 
     var server = express();
 
-    server.get('/', function (request, response) {
-        response.send('Hello world');
+    server.get('/useless_route', function (request, response) {
+        database.query('SELECT 1', function (err, rows) {
+            response.send(rows);
+        });
     });
 
     return server;
