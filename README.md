@@ -1,4 +1,4 @@
-### Modularity
+## Modularity
 
 Asynchronous dependency injection is a pain in node.js - here's a solution.
 
