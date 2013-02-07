@@ -21,7 +21,7 @@ modularity.load(__dirname + '/lib', function (server, config) {
 *lib/server.js*
 
 ```javascript
-module.exports = function (express, database, config) {
+module.exports = function (express, database) {
 
     var server = express();
 
