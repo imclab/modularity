@@ -1,0 +1,15 @@
+{
+  "name": "modularity",
+  "version": "0.1.0",
+  "description": "Module loader",
+  "main": "index.js",
+  "scripts": {
+    "test": "make check"
+  },
+  "repository": "https://github.com/sydneystockholm/modularity",
+  "author": "Sydney Stockholm <opensource@sydneystockholm.com>",
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "*"
+  }
+}
