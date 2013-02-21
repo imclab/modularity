@@ -8,12 +8,17 @@ modularity.load = function (/* paths, */ callback) {
       , components = {};
     callback = paths.pop();
     var dependencies = modularity.args(callback)
-      , expects_error = dependencies.indexOf('err') !== -1;
+      , expects_error = dependencies.indexOf('err') !== -1
+      , cache = paths.pop();
+    if (typeof cache !== 'object') {
+        paths.push(cache);
+        cache = {};
+    }
     dependencies = expects_error ? dependencies.slice(1) : dependencies;
     if (modularity.includeExternalModules) {
         paths.push('');
     }
-    modularity.loadDependencies(dependencies, paths, function (err, modules) {
+    modularity.loadDependencies(dependencies, paths, [], null, cache, function (err, modules) {
         if (err) {
             if (expects_error) {
                 return callback(err);
@@ -32,12 +37,6 @@ modularity.load = function (/* paths, */ callback) {
 };
 
 modularity.loadDependencies = function (dependencies, paths, ancestors, parent, cache, callback) {
-    if (typeof ancestors === 'function') {
-        callback = ancestors;
-        ancestors = [];
-        parent = null;
-        cache = {};
-    }
     var loaded = {};
     modularity.forEach(dependencies, function (dependency, next) {
         if (!dependency || dependency === 'callback') {

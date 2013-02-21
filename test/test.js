@@ -98,5 +98,19 @@ describe('Modularity', function () {
         });
     });
 
+    it('should let you inject dependencies', function (done) {
+        var bar = { reverse: function (str) {
+            return str.split('').reverse().join('');
+        }};
+        modularity.load(
+            path.join(__dirname, '2')
+          , { bar: bar }
+          , function (err, foo) {
+                assert(!err, err);
+                assert.equal(foo, 'raboof');
+                done();
+            });
+    });
+
 });
 
