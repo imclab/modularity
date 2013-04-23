@@ -29,17 +29,6 @@ describe('Modularity', function () {
         });
     });
 
-    it('should throw an error if the callback isn\'t expecting err', function (done) {
-        var originalException = process.listeners('uncaughtException').pop();
-        process.once("uncaughtException", function (error) {
-            process.listeners('uncaughtException').push(originalException);
-            done();
-        });
-        loadTest(2, function (foo) {
-            //Unreachable
-        });
-    });
-
     it('should look in multiple directories to resolve deps', function (done) {
         modularity.load(
             path.join(__dirname, '2')
