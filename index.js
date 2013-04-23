@@ -90,7 +90,7 @@ modularity.require = function (parent, dependency, paths, callback) {
     process.nextTick(function () {
         var attempts = [];
         for (var path, module, i = 0, len = paths.length; i < len; i++) {
-            path = join(paths[i], dependency);
+            path = join(paths[i] || '', dependency);
             try {
                 module = require(path);
                 return callback(null, module, path);
