@@ -6,8 +6,7 @@ var path = require('path')
 modularity.includeExternalModules = true;
 
 modularity.load = function (/* paths, */ callback) {
-    var paths = Array.prototype.slice.call(arguments)
-      , components = {};
+    var paths = Array.prototype.slice.call(arguments);
     callback = paths.pop();
     var dependencies = modularity.args(callback)
       , expects_error = dependencies.indexOf('err') !== -1
@@ -50,7 +49,7 @@ modularity.loadDependencies = function (dependencies, paths, ancestors, parent, 
         }
         if (ancestors.indexOf(dependency) !== -1) {
             return next(new Error('Circular dependency for "' + dependency +
-                '" found in module "' + parent +'"'));
+                '" found in module "' + parent + '"'));
         }
         modularity.require(parent, dependency, paths, function (err, module, path) {
             if (err) {
