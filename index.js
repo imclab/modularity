@@ -1,4 +1,6 @@
-var join = require('path').join
+var path = require('path')
+  , join = path.join
+  , sep = path.sep
   , modularity = exports;
 
 modularity.includeExternalModules = true;
@@ -101,6 +103,20 @@ modularity.require = function (parent, dependency, paths, callback) {
                     return callback(e);
                 }
                 attempts.push(path);
+            }
+            if (dependency.indexOf('_') !== -1) {
+                path = join(paths[i] || '', dependency.replace(/_/g, sep));
+                try {
+                    module = require(path);
+                    return callback(null, module, path);
+                } catch (e) {
+                    if (typeof e !== 'object' || !e.message ||
+                            e.code !== 'MODULE_NOT_FOUND' ||
+                            e.message.indexOf(path) === -1) {
+                        return callback(e);
+                    }
+                    attempts.push(path);
+                }
             }
         }
         paths = attempts.map(function (path) {

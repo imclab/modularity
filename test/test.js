@@ -101,5 +101,13 @@ describe('Modularity', function () {
             });
     });
 
+    it('should load dependencies from subdirectories', function (done) {
+        loadTest(7, function (err, foo) {
+            assert(!err, err);
+            assert.equal(foo, 'bar');
+            done();
+        });
+    });
+
 });
 
