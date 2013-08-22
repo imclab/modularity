@@ -38,7 +38,7 @@ Modularity.prototype.load = function (callback) {
     var dependencies = args(callback)
       , expects_error = dependencies.indexOf('err') !== -1;
     dependencies = expects_error ? dependencies.slice(1) : dependencies;
-    this.loadDependencies(dependencies, this.paths, [], null, this.cache, function (err, modules) {
+    this.loadDependencies(dependencies, [], null, function (err, modules) {
         if (err) {
             if (expects_error) {
                 return callback(err);
@@ -56,49 +56,50 @@ Modularity.prototype.load = function (callback) {
     });
 };
 
-Modularity.prototype.loadDependencies = function (dependencies, paths, ancestors, parent, cache, callback) {
+Modularity.prototype.loadDependencies = function (dependencies, ancestors, parent, callback) {
     var loaded = {}, self = this;
     forEach(dependencies, function (dependency, next) {
         if (!dependency || dependency === 'callback') {
             return next();
         }
-        if (dependency in cache) {
-            loaded[dependency] = cache[dependency];
+        if (dependency in self.cache) {
+            loaded[dependency] = self.cache[dependency];
             return next();
         }
         if (ancestors.indexOf(dependency) !== -1) {
             return next(new Error('Circular dependency for "' + dependency +
                 '" found in module "' + parent + '"'));
         }
-        self.require(parent, dependency, paths, function (err, module, path) {
-            if (err) {
-                return next(err);
-            }
-            if (typeof module !== 'function') {
-                loaded[dependency] = cache[dependency] = module;
-                return next();
-            }
-            var module_dependencies = args(module);
-            self.loadDependencies(module_dependencies, paths,
-                    ancestors.concat([dependency]), path, cache, function (err, modules) {
+        process.nextTick(function () {
+            self.require(parent, dependency, function (err, module, path) {
                 if (err) {
                     return next(err);
                 }
-                var is_async = module_dependencies.indexOf('callback') !== -1;
-                if (is_async) {
-                    modules.callback = function (err, module) {
-                        loaded[dependency] = cache[dependency] = module;
-                        next(err);
-                    };
+                if (typeof module !== 'function') {
+                    loaded[dependency] = self.cache[dependency] = module;
+                    return next();
                 }
-                var args = module_dependencies.map(function (dependency) {
-                    return modules[dependency];
+                var module_dependencies = args(module);
+                self.loadDependencies(module_dependencies, ancestors.concat([dependency]), path, function (err, modules) {
+                    if (err) {
+                        return next(err);
+                    }
+                    var is_async = module_dependencies.indexOf('callback') !== -1;
+                    if (is_async) {
+                        modules.callback = function (err, module) {
+                            loaded[dependency] = self.cache[dependency] = module;
+                            next(err);
+                        };
+                    }
+                    var args = module_dependencies.map(function (dependency) {
+                        return modules[dependency];
+                    });
+                    var sync_return = module.apply(null, args);
+                    if (!is_async) {
+                        loaded[dependency] = self.cache[dependency] = sync_return;
+                        next();
+                    }
                 });
-                var sync_return = module.apply(null, args);
-                if (!is_async) {
-                    loaded[dependency] = cache[dependency] = sync_return;
-                    next();
-                }
             });
         });
     }, function (err) {
@@ -106,11 +107,23 @@ Modularity.prototype.loadDependencies = function (dependencies, paths, ancestors
     });
 };
 
-Modularity.prototype.require = function (parent, dependency, paths, callback) {
-    process.nextTick(function () {
-        var attempts = [];
-        for (var path, module, i = 0, len = paths.length; i < len; i++) {
-            path = join(paths[i] || '', dependency);
+Modularity.prototype.require = function (parent, dependency, callback) {
+    var attempts = [];
+    for (var path, module, i = 0, len = this.paths.length; i < len; i++) {
+        path = join(this.paths[i] || '', dependency);
+        try {
+            module = require(path);
+            return callback(null, module, path);
+        } catch (e) {
+            if (typeof e !== 'object' || !e.message ||
+                    e.code !== 'MODULE_NOT_FOUND' ||
+                    e.message.indexOf(path) === -1) {
+                return callback(e);
+            }
+            attempts.push(path);
+        }
+        if (dependency.indexOf('_') !== -1) {
+            path = join(this.paths[i] || '', dependency.replace(/_/g, sep));
             try {
                 module = require(path);
                 return callback(null, module, path);
@@ -122,31 +135,17 @@ Modularity.prototype.require = function (parent, dependency, paths, callback) {
                 }
                 attempts.push(path);
             }
-            if (dependency.indexOf('_') !== -1) {
-                path = join(paths[i] || '', dependency.replace(/_/g, sep));
-                try {
-                    module = require(path);
-                    return callback(null, module, path);
-                } catch (e) {
-                    if (typeof e !== 'object' || !e.message ||
-                            e.code !== 'MODULE_NOT_FOUND' ||
-                            e.message.indexOf(path) === -1) {
-                        return callback(e);
-                    }
-                    attempts.push(path);
-                }
-            }
         }
-        paths = attempts.map(function (path) {
-            return 'require(\'' + path + '\')';
-        }).join(', ');
-        var message = 'Failed to locate dependency "' + dependency + '"';
-        if (parent) {
-            message += ' when loading module "' + parent + '"';
-        }
-        message += ', tried ' + paths;
-        callback(new Error(message));
-    });
+    }
+    var attempted_paths = attempts.map(function (path) {
+        return 'require(\'' + path + '\')';
+    }).join(', ');
+    var message = 'Failed to locate dependency "' + dependency + '"';
+    if (parent) {
+        message += ' when loading module "' + parent + '"';
+    }
+    message += ', tried ' + attempted_paths;
+    callback(new Error(message));
 };
 
 function args(fn) {
