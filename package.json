@@ -8,11 +8,11 @@
   },
   "repository": "https://github.com/sydneystockholm/modularity",
   "author": "Sydney Stockholm <opensource@sydneystockholm.com>",
-  "dependencies": {},
   "engines": {
     "node": ">= 0.10"
   },
   "devDependencies": {
-    "mocha": "*"
+    "mocha": "latest",
+    "istanbul": "latest"
   }
 }
