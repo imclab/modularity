@@ -1,5 +1,5 @@
 var EventEmitter = require('events').EventEmitter
-  , inherits = require('util').inherits
+  , util = require('util')
   , path = require('path')
   , join = path.join
   , sep = path.sep;
@@ -20,7 +20,7 @@ function Modularity() {
     this.cache = {};
 }
 
-inherits(Modularity, EventEmitter);
+util.inherits(Modularity, EventEmitter);
 
 Modularity.prototype.include = function (/* dirs */) {
     this.paths = Array.prototype.slice.call(arguments).concat(this.paths);
@@ -127,15 +127,13 @@ Modularity.prototype.require = function (parent, dependency, callback) {
             }
         }
     }
-    var attempted_paths = attempts.map(function (path) {
-        return 'require(\'' + path + '\')';
+    parent = parent || '(root)';
+    var attempted_requires = attempts.map(function (path) {
+        return util.format('require("%s")', path);
     }).join(', ');
-    var message = 'Failed to locate dependency "' + dependency + '"';
-    if (parent) {
-        message += ' when loading module "' + parent + '"';
-    }
-    message += ', tried ' + attempted_paths;
-    callback(new Error(message));
+    var message = 'Failed to locate dependency "%s" when loading %s, tried %s';
+    var error = new Error(util.format(message, dependency, parent || '(root)', attempted_requires));
+    callback(error);
 };
 
 function args(fn) {
