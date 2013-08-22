@@ -53,7 +53,7 @@ Modularity.prototype.load = function (callback) {
 Modularity.prototype.loadDependencies = function (dependencies, ancestors, parent, callback) {
     var loaded = {}, self = this;
     forEach(dependencies, function (dependency, next) {
-        if (!dependency || dependency === 'callback') {
+        if (dependency === 'callback') {
             return next();
         }
         if (dependency in self.cache) {
@@ -132,7 +132,9 @@ Modularity.prototype.require = function (parent, dependency, callback) {
 
 function parseArgs(fn) {
     var arg_str = fn.toString().match(/function [^\(]*\(([^\)]*)\)/)[1];
-    return arg_str.split(/[\r\t\n ]*,[\r\t\n ]*/);
+    return arg_str.split(/[\r\t\n ]*,[\r\t\n ]*/).filter(function (arg) {
+        return arg.length;
+    });
 }
 
 function forEach(array, iterator, callback) {

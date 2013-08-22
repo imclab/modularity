@@ -36,6 +36,12 @@ describe('Modularity', function () {
         });
     });
 
+    it('should load when no dependencies are supplied', function (done) {
+        loadTest(2, function () {
+            done();
+        });
+    });
+
     it('should look in multiple directories to resolve deps', function (done) {
         modularity
             .include(path.join(__dirname, '2'), path.join(__dirname, '1'))
@@ -102,6 +108,29 @@ describe('Modularity', function () {
     it('should load dependencies from subdirectories', function (done) {
         loadTest(7, function (foo) {
             assert.equal(foo, 'bar');
+            done();
+        });
+    });
+
+    it('should replace underscores with path separators when resolving dependencies', function (done) {
+        loadTest(8, function (foo) {
+            assert.equal(foo, 'bazfooqux');
+            done();
+        });
+    });
+
+    it('should include global modules by default', function (done) {
+        loadTest(1, function (fs) {
+            assert(fs.readFile);
+            done();
+        });
+    });
+
+    it('should not include global modules when asked not to', function (done) {
+        var instance = new modularity.Modularity({ include_global: false });
+        instance.load(function (fs) {
+            assert(false, 'Expected an error');
+        }).on('error', function () {
             done();
         });
     });
