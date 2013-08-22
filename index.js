@@ -62,36 +62,34 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
             return next(new Error('Circular dependency for "' + dependency +
                 '" found in module "' + parent + '"'));
         }
-        process.nextTick(function () {
-            self.require(parent, dependency, function (err, module, path) {
+        self.require(parent, dependency, function (err, module, path) {
+            if (err) {
+                return next(err);
+            }
+            if (typeof module !== 'function') {
+                loaded[dependency] = self.cache[dependency] = module;
+                return next();
+            }
+            var module_dependencies = args(module);
+            self.loadDependencies(module_dependencies, ancestors.concat([dependency]), path, function (err, modules) {
                 if (err) {
                     return next(err);
                 }
-                if (typeof module !== 'function') {
-                    loaded[dependency] = self.cache[dependency] = module;
-                    return next();
+                var is_async = module_dependencies.indexOf('callback') !== -1;
+                if (is_async) {
+                    modules.callback = function (err, module) {
+                        loaded[dependency] = self.cache[dependency] = module;
+                        next(err);
+                    };
                 }
-                var module_dependencies = args(module);
-                self.loadDependencies(module_dependencies, ancestors.concat([dependency]), path, function (err, modules) {
-                    if (err) {
-                        return next(err);
-                    }
-                    var is_async = module_dependencies.indexOf('callback') !== -1;
-                    if (is_async) {
-                        modules.callback = function (err, module) {
-                            loaded[dependency] = self.cache[dependency] = module;
-                            next(err);
-                        };
-                    }
-                    var args = module_dependencies.map(function (dependency) {
-                        return modules[dependency];
-                    });
-                    var sync_return = module.apply(null, args);
-                    if (!is_async) {
-                        loaded[dependency] = self.cache[dependency] = sync_return;
-                        next();
-                    }
+                var args = module_dependencies.map(function (dependency) {
+                    return modules[dependency];
                 });
+                var sync_return = module.apply(null, args);
+                if (!is_async) {
+                    loaded[dependency] = self.cache[dependency] = sync_return;
+                    next();
+                }
             });
         });
     }, function (err) {
@@ -156,7 +154,7 @@ function forEach(array, each, callback) {
             if (err || !--remaining) {
                 return callback(err);
             }
-            process.nextTick(next);
+            setImmediate(next);
         });
     })();
 }
