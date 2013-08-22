@@ -1,3 +1,5 @@
+/*jshint unused:false */
+
 var modularity = require('../')
   , assert = require('assert')
   , path = require('path');
