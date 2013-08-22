@@ -1,14 +1,17 @@
-var path = require('path')
+var EventEmitter = require('events').EventEmitter
+  , inherits = require('util').inherits
+  , path = require('path')
   , join = path.join
-  , sep = path.sep
-  , modularity = exports;
+  , sep = path.sep;
 
 ['include', 'inject', 'load'].forEach(function (fn) {
-    modularity[fn] = function () {
+    exports[fn] = function () {
         var instance = new Modularity();
         return instance[fn].apply(instance, arguments);
     };
 });
+
+exports.Modularity = Modularity;
 
 function Modularity() {
     this.paths = [
@@ -17,11 +20,10 @@ function Modularity() {
     this.cache = {};
 }
 
-modularity.Modularity = Modularity;
+inherits(Modularity, EventEmitter);
 
-Modularity.prototype.include = function (dirs) {
-    dirs = Array.prototype.slice.call(arguments);
-    this.paths = dirs.concat(this.paths);
+Modularity.prototype.include = function (/* dirs */) {
+    this.paths = Array.prototype.slice.call(arguments).concat(this.paths);
     return this;
 };
 
@@ -33,27 +35,17 @@ Modularity.prototype.inject = function (modules) {
 };
 
 Modularity.prototype.load = function (callback) {
-    var paths = Array.prototype.slice.call(arguments);
-    callback = paths.pop();
     var dependencies = args(callback)
-      , expects_error = dependencies.indexOf('err') !== -1;
-    dependencies = expects_error ? dependencies.slice(1) : dependencies;
-    this.loadDependencies(dependencies, [], null, function (err, modules) {
-        if (err) {
-            if (expects_error) {
-                return callback(err);
-            } else {
-                throw err;
-            }
-        }
-        var args = dependencies.map(function (dependency) {
-            return modules[dependency];
+      , self = this;
+    process.nextTick(function () {
+        self.loadDependencies(dependencies, [], null, function (err, modules) {
+            if (err) return self.emit('error', err);
+            callback.apply(null, dependencies.map(function (dependency) {
+                return modules[dependency];
+            }));
         });
-        if (expects_error) {
-            args = [ null ].concat(args);
-        }
-        callback.apply(null, args);
     });
+    return this;
 };
 
 Modularity.prototype.loadDependencies = function (dependencies, ancestors, parent, callback) {
