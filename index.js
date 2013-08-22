@@ -1,8 +1,6 @@
 var EventEmitter = require('events').EventEmitter
   , util = require('util')
-  , path = require('path')
-  , join = path.join
-  , sep = path.sep;
+  , path = require('path');
 
 ['include', 'inject', 'load'].forEach(function (fn) {
     exports[fn] = function () {
@@ -22,7 +20,7 @@ function Modularity() {
 
 util.inherits(Modularity, EventEmitter);
 
-Modularity.prototype.include = function (/* dirs */) {
+Modularity.prototype.include = function (/* dirs... */) {
     this.paths = Array.prototype.slice.call(arguments).concat(this.paths);
     return this;
 };
@@ -35,11 +33,13 @@ Modularity.prototype.inject = function (modules) {
 };
 
 Modularity.prototype.load = function (callback) {
-    var dependencies = args(callback)
+    var dependencies = parseArgs(callback)
       , self = this;
     process.nextTick(function () {
-        self.loadDependencies(dependencies, [], null, function (err, modules) {
-            if (err) return self.emit('error', err);
+        self.loadDependencies(dependencies, [], '(root)', function (err, modules) {
+            if (err) {
+                return self.emit('error', err);
+            }
             callback.apply(null, dependencies.map(function (dependency) {
                 return modules[dependency];
             }));
@@ -59,10 +59,11 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
             return next();
         }
         if (ancestors.indexOf(dependency) !== -1) {
-            return next(new Error('Circular dependency for "' + dependency +
-                '" found in module "' + parent + '"'));
+            var message = 'Circular dependency for "%s" found in %s'
+              , error = new Error(util.format(message, dependency, parent));
+            return next(error);
         }
-        self.require(parent, dependency, function (err, module, path) {
+        self.require(parent, dependency, function (err, module, module_path) {
             if (err) {
                 return next(err);
             }
@@ -70,19 +71,21 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
                 loaded[dependency] = self.cache[dependency] = module;
                 return next();
             }
-            var module_dependencies = args(module);
-            self.loadDependencies(module_dependencies, ancestors.concat([dependency]), path, function (err, modules) {
+            var module_deps = parseArgs(module)
+              , module_ancestors = ancestors.concat([ dependency ]);
+            self.loadDependencies(module_deps, module_ancestors,
+                    module_path, function (err, modules) {
                 if (err) {
                     return next(err);
                 }
-                var is_async = module_dependencies.indexOf('callback') !== -1;
+                var is_async = module_deps.indexOf('callback') !== -1;
                 if (is_async) {
                     modules.callback = function (err, module) {
                         loaded[dependency] = self.cache[dependency] = module;
                         next(err);
                     };
                 }
-                var args = module_dependencies.map(function (dependency) {
+                var args = module_deps.map(function (dependency) {
                     return modules[dependency];
                 });
                 var sync_return = module.apply(null, args);
@@ -98,57 +101,45 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
 };
 
 Modularity.prototype.require = function (parent, dependency, callback) {
-    var attempts = [];
-    for (var path, module, i = 0, len = this.paths.length; i < len; i++) {
-        path = join(this.paths[i] || '', dependency);
-        try {
-            module = require(path);
-            return callback(null, module, path);
-        } catch (e) {
-            if (typeof e !== 'object' || !e.message ||
-                    e.code !== 'MODULE_NOT_FOUND' ||
-                    e.message.indexOf(path) === -1) {
-                return callback(e);
-            }
-            attempts.push(path);
-        }
-        if (dependency.indexOf('_') !== -1) {
-            path = join(this.paths[i] || '', dependency.replace(/_/g, sep));
+    var attempts = [], require_path, module, module_path, module_name;
+    for (var i = 0, len = this.paths.length; i < len; i++) {
+        module_name = dependency;
+        require_path = this.paths[i];
+        do {
+            module_path = path.join(require_path, module_name);
             try {
-                module = require(path);
-                return callback(null, module, path);
+                module = require(module_path);
+                return callback(null, module, module_path);
             } catch (e) {
-                if (typeof e !== 'object' || !e.message ||
+                if (typeof e !== 'object' ||
                         e.code !== 'MODULE_NOT_FOUND' ||
-                        e.message.indexOf(path) === -1) {
+                        e.message.indexOf(module_path) === -1) {
                     return callback(e);
                 }
-                attempts.push(path);
+                attempts.push(module_path);
             }
-        }
+        } while (module_name !== (module_name = module_name.replace('_', path.sep)));
     }
-    parent = parent || '(root)';
-    var attempted_requires = attempts.map(function (path) {
-        return util.format('require("%s")', path);
+    var requires = attempts.map(function (module_path) {
+        return util.format('require("%s")', module_path);
     }).join(', ');
-    var message = 'Failed to locate dependency "%s" when loading %s, tried %s';
-    var error = new Error(util.format(message, dependency, parent || '(root)', attempted_requires));
+    var message = 'Failed to locate dependency "%s" when loading %s, tried %s'
+      , error = new Error(util.format(message, dependency, parent, requires));
     callback(error);
 };
 
-function args(fn) {
-    return fn.toString()
-             .match(/function [^\(]*\(([^\)]*)\)/)[1]
-             .split(/[\r\t\n ]*,[\r\t\n ]*/);
+function parseArgs(fn) {
+    var arg_str = fn.toString().match(/function [^\(]*\(([^\)]*)\)/)[1];
+    return arg_str.split(/[\r\t\n ]*,[\r\t\n ]*/);
 }
 
-function forEach(array, each, callback) {
+function forEach(array, iterator, callback) {
     var remaining = array.length, pos = 0;
     if (!remaining) {
         return callback();
     }
     (function next() {
-        each(array[pos++], function (err) {
+        iterator(array[pos++], function (err) {
             if (err || !--remaining) {
                 return callback(err);
             }
