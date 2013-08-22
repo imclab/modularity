@@ -66,19 +66,6 @@ describe('Modularity', function () {
         });
     });
 
-    it('should load external modules unless explicitly told not to', function (done) {
-        modularity.load(function (fs, util) {
-            assert.equal(typeof fs, 'object');
-            assert.equal(typeof util, 'object');
-            modularity.includeExternalModules = false;
-            modularity.load(function (err, fs) {
-                assert(err);
-                modularity.includeExternalModules = true;
-                done();
-            });
-        });
-    });
-
     it('should handle the case when a module doesn\'t have any dependencies', function (done) {
         loadTest(6, function (err, foo) {
             assert(!err, err);

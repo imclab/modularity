@@ -3,8 +3,6 @@ var path = require('path')
   , sep = path.sep
   , modularity = exports;
 
-modularity.includeExternalModules = true;
-
 modularity.load = function (/* paths, */ callback) {
     var paths = Array.prototype.slice.call(arguments);
     callback = paths.pop();
@@ -16,9 +14,7 @@ modularity.load = function (/* paths, */ callback) {
         cache = {};
     }
     dependencies = expects_error ? dependencies.slice(1) : dependencies;
-    if (modularity.includeExternalModules) {
-        paths.push('');
-    }
+    paths.push(''); //include external modules
     modularity.loadDependencies(dependencies, paths, [], null, cache, function (err, modules) {
         if (err) {
             if (expects_error) {
