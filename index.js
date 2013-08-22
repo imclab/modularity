@@ -11,10 +11,12 @@ var EventEmitter = require('events').EventEmitter
 
 exports.Modularity = Modularity;
 
-function Modularity() {
-    this.paths = [
-        '' //i.e. include global modules
-    ];
+function Modularity(options) {
+    this.paths = [];
+    options = options || (options = {});
+    if (options.include_global !== false) {
+        this.paths.push('');
+    }
     this.cache = {};
 }
 
