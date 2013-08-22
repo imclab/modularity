@@ -3,10 +3,19 @@ var path = require('path')
   , sep = path.sep
   , modularity = exports;
 
-modularity.load = function (/* paths, */ callback) {
+modularity.load = function () {
+    var instance = new Modularity();
+    return instance.load.apply(instance, arguments);
+};
+
+function Modularity() {}
+
+modularity.Modularity = Modularity;
+
+Modularity.prototype.load = function (/* paths, */ callback) {
     var paths = Array.prototype.slice.call(arguments);
     callback = paths.pop();
-    var dependencies = modularity.args(callback)
+    var dependencies = args(callback)
       , expects_error = dependencies.indexOf('err') !== -1
       , cache = paths.pop();
     if (typeof cache !== 'object') {
@@ -15,7 +24,7 @@ modularity.load = function (/* paths, */ callback) {
     }
     dependencies = expects_error ? dependencies.slice(1) : dependencies;
     paths.push(''); //include external modules
-    modularity.loadDependencies(dependencies, paths, [], null, cache, function (err, modules) {
+    this.loadDependencies(dependencies, paths, [], null, cache, function (err, modules) {
         if (err) {
             if (expects_error) {
                 return callback(err);
@@ -33,9 +42,9 @@ modularity.load = function (/* paths, */ callback) {
     });
 };
 
-modularity.loadDependencies = function (dependencies, paths, ancestors, parent, cache, callback) {
-    var loaded = {};
-    modularity.forEach(dependencies, function (dependency, next) {
+Modularity.prototype.loadDependencies = function (dependencies, paths, ancestors, parent, cache, callback) {
+    var loaded = {}, self = this;
+    forEach(dependencies, function (dependency, next) {
         if (!dependency || dependency === 'callback') {
             return next();
         }
@@ -47,7 +56,7 @@ modularity.loadDependencies = function (dependencies, paths, ancestors, parent, 
             return next(new Error('Circular dependency for "' + dependency +
                 '" found in module "' + parent + '"'));
         }
-        modularity.require(parent, dependency, paths, function (err, module, path) {
+        self.require(parent, dependency, paths, function (err, module, path) {
             if (err) {
                 return next(err);
             }
@@ -55,8 +64,8 @@ modularity.loadDependencies = function (dependencies, paths, ancestors, parent, 
                 loaded[dependency] = cache[dependency] = module;
                 return next();
             }
-            var module_dependencies = modularity.args(module);
-            modularity.loadDependencies(module_dependencies, paths,
+            var module_dependencies = args(module);
+            self.loadDependencies(module_dependencies, paths,
                     ancestors.concat([dependency]), path, cache, function (err, modules) {
                 if (err) {
                     return next(err);
@@ -83,7 +92,7 @@ modularity.loadDependencies = function (dependencies, paths, ancestors, parent, 
     });
 };
 
-modularity.require = function (parent, dependency, paths, callback) {
+Modularity.prototype.require = function (parent, dependency, paths, callback) {
     process.nextTick(function () {
         var attempts = [];
         for (var path, module, i = 0, len = paths.length; i < len; i++) {
@@ -126,13 +135,13 @@ modularity.require = function (parent, dependency, paths, callback) {
     });
 };
 
-modularity.args = function (fn) {
+function args(fn) {
     return fn.toString()
              .match(/function [^\(]*\(([^\)]*)\)/)[1]
              .split(/[\r\t\n ]*,[\r\t\n ]*/);
-};
+}
 
-modularity.forEach = function (array, each, callback) {
+function forEach(array, each, callback) {
     var remaining = array.length, pos = 0;
     if (!remaining) {
         return callback();
@@ -145,5 +154,5 @@ modularity.forEach = function (array, each, callback) {
             process.nextTick(next);
         });
     })();
-};
+}
 
