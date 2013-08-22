@@ -3,28 +3,42 @@ var path = require('path')
   , sep = path.sep
   , modularity = exports;
 
-modularity.load = function () {
-    var instance = new Modularity();
-    return instance.load.apply(instance, arguments);
-};
+['include', 'inject', 'load'].forEach(function (fn) {
+    modularity[fn] = function () {
+        var instance = new Modularity();
+        return instance[fn].apply(instance, arguments);
+    };
+});
 
-function Modularity() {}
+function Modularity() {
+    this.paths = [
+        '' //i.e. include global modules
+    ];
+    this.cache = {};
+}
 
 modularity.Modularity = Modularity;
 
-Modularity.prototype.load = function (/* paths, */ callback) {
+Modularity.prototype.include = function (dirs) {
+    dirs = Array.prototype.slice.call(arguments);
+    this.paths = dirs.concat(this.paths);
+    return this;
+};
+
+Modularity.prototype.inject = function (modules) {
+    for (var key in modules) {
+        this.cache[key] = modules[key];
+    }
+    return this;
+};
+
+Modularity.prototype.load = function (callback) {
     var paths = Array.prototype.slice.call(arguments);
     callback = paths.pop();
     var dependencies = args(callback)
-      , expects_error = dependencies.indexOf('err') !== -1
-      , cache = paths.pop();
-    if (typeof cache !== 'object') {
-        paths.push(cache);
-        cache = {};
-    }
+      , expects_error = dependencies.indexOf('err') !== -1;
     dependencies = expects_error ? dependencies.slice(1) : dependencies;
-    paths.push(''); //include external modules
-    this.loadDependencies(dependencies, paths, [], null, cache, function (err, modules) {
+    this.loadDependencies(dependencies, this.paths, [], null, this.cache, function (err, modules) {
         if (err) {
             if (expects_error) {
                 return callback(err);

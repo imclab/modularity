@@ -3,7 +3,9 @@ var modularity = require('../')
   , path = require('path');
 
 function loadTest(num, handler) {
-    modularity.load(path.join(__dirname, num + ''), handler);
+    modularity
+        .include(path.join(__dirname, num + ''))
+        .load(handler);
 }
 
 describe('Modularity', function () {
@@ -30,10 +32,9 @@ describe('Modularity', function () {
     });
 
     it('should look in multiple directories to resolve deps', function (done) {
-        modularity.load(
-            path.join(__dirname, '2')
-          , path.join(__dirname, '1')
-          , function (err, foo) {
+        modularity
+            .include(path.join(__dirname, '2'), path.join(__dirname, '1'))
+            .load(function (err, foo) {
                 assert(!err, err);
                 assert.equal(foo, 'raboof');
                 done();
@@ -78,10 +79,10 @@ describe('Modularity', function () {
         var bar = { reverse: function (str) {
             return str.split('').reverse().join('');
         }};
-        modularity.load(
-            path.join(__dirname, '2')
-          , { bar: bar }
-          , function (err, foo) {
+        modularity
+            .include(path.join(__dirname, '2'))
+            .inject({ bar: bar })
+            .load(function (err, foo) {
                 assert(!err, err);
                 assert.equal(foo, 'raboof');
                 done();
