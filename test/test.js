@@ -5,7 +5,7 @@ var modularity = require('../')
   , path = require('path');
 
 function loadTest(num, handler) {
-    return modularity.include(path.join(__dirname, num + '')).load(handler);
+    return modularity.include(path.join(__dirname, 'fixtures', num + '')).load(handler);
 }
 
 describe('Modularity', function () {
@@ -44,7 +44,7 @@ describe('Modularity', function () {
 
     it('should look in multiple directories to resolve deps', function (done) {
         modularity
-            .include(path.join(__dirname, '2'), path.join(__dirname, '1'))
+            .include(path.join(__dirname, 'fixtures', '2'), path.join(__dirname, 'fixtures', '1'))
             .load(function (foo) {
                 assert.equal(foo, 'raboof');
                 done();
@@ -97,7 +97,7 @@ describe('Modularity', function () {
             return str.split('').reverse().join('');
         }};
         modularity
-            .include(path.join(__dirname, '2'))
+            .include(path.join(__dirname, 'fixtures', '2'))
             .inject({ bar: bar })
             .load(function (foo) {
                 assert.equal(foo, 'raboof');
