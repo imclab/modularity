@@ -9,7 +9,7 @@ test:
 
 coverage:
 	@./node_modules/.bin/istanbul cover \
-		./node_modules/.bin/_mocha -- -R spec || exit 1
+		./node_modules/.bin/_mocha -- -R spec
 
 coverage-html: coverage
 	@open coverage/lcov-report/index.html
