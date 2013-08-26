@@ -119,6 +119,13 @@ describe('Modularity', function () {
         });
     });
 
+    it('should support angular.js style array syntax', function (done) {
+        loadTest(9, function (foo) {
+            assert.equal(foo, 'bazfooqux');
+            done();
+        });
+    });
+
     it('should include global modules by default', function (done) {
         loadTest(1, function (fs) {
             assert(fs.readFile);

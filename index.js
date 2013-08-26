@@ -69,12 +69,17 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
             if (err) {
                 return next(err);
             }
-            if (typeof module !== 'function') {
+            var module_deps;
+            if (Array.isArray(module)) {
+                module_deps = module;
+                module = module_deps.pop();
+            } else if (typeof module === 'function') {
+                module_deps = parseArgs(module);
+            } else {
                 loaded[dependency] = self.cache[dependency] = module;
                 return next();
             }
-            var module_deps = parseArgs(module)
-              , module_ancestors = ancestors.concat([ dependency ]);
+            var module_ancestors = ancestors.concat([ dependency ]);
             self.loadDependencies(module_deps, module_ancestors,
                     module_path, function (err, modules) {
                 if (err) {
