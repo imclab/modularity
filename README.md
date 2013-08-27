@@ -9,13 +9,12 @@ Asynchronous dependency injection is a pain in node.js - here's a solution.
 ```javascript
 var modularity = require('modularity');
 
-//Load the server and config module from ./lib
-modularity.load(__dirname + '/lib', function (server, config) {
-
-    server.listen(config.port);
-    console.log('Listening on %s', config.port);
-
-});
+modularity
+    .include(__dirname + '/lib')
+    .load(function (server, config) {
+        server.listen(config.port);
+        console.log('Listening on %s', config.port);
+    });
 ```
 
 *lib/server.js*
@@ -57,6 +56,20 @@ module.exports = function (config, callback) {
 module.exports = {
     port: 3000
 };
+```
+
+## Dependency injection
+
+```javascript
+var modularity = require('modularity');
+
+modularity
+    .include(__dirname + '/lib')
+    .inject({ config: test_config })
+    .load(function (server, config) {
+        server.listen(config.port);
+        console.log('Listening on %s', config.port);
+    });
 ```
 
 ## License (MIT)
