@@ -53,7 +53,7 @@ Modularity.prototype.load = function (callback) {
 Modularity.prototype.loadDependencies = function (dependencies, ancestors, parent, callback) {
     var loaded = {}, self = this;
     forEach(dependencies, function (dependency, next) {
-        if (dependency === 'callback') {
+        if (dependency === 'callback' || typeof dependency === 'function') {
             return next();
         }
         if (dependency in self.cache) {
@@ -70,9 +70,9 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
                 return next(err);
             }
             var module_deps;
-            if (Array.isArray(module)) {
+            if (Array.isArray(module) && typeof module[module.length - 1] === 'function') {
                 module_deps = module;
-                module = module_deps.pop();
+                module = module[module.length - 1];
             } else if (typeof module === 'function') {
                 module_deps = parseArgs(module);
             } else {
