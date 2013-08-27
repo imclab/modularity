@@ -112,6 +112,13 @@ describe('Modularity', function () {
         });
     });
 
+    it('should support angular.js style array syntax in the top-level load function', function (done) {
+        loadTest(9, ['bar/baz_foo', function (foo) {
+            assert.equal(foo, 'foo');
+            done();
+        }]);
+    });
+
     it('should include global modules by default', function (done) {
         loadTest(1, function (fs) {
             assert(fs.readFile);

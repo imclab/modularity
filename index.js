@@ -35,8 +35,13 @@ Modularity.prototype.inject = function (modules) {
 };
 
 Modularity.prototype.load = function (callback) {
-    var dependencies = parseArgs(callback)
-      , self = this;
+    var dependencies, self = this;
+    if (Array.isArray(callback) && typeof callback[callback.length - 1] === 'function') {
+        dependencies = callback;
+        callback = callback[callback.length - 1];
+    } else {
+        dependencies = parseArgs(callback);
+    }
     process.nextTick(function () {
         self.loadDependencies(dependencies, [], '(root)', function (err, modules) {
             if (err) {
