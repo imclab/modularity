@@ -1,1 +1,1 @@
-module.exports = 'qux';
+module.exports = ['q', 'u', 'x'];
