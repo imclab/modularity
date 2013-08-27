@@ -108,24 +108,20 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
 };
 
 Modularity.prototype.require = function (parent, dependency, callback) {
-    var attempts = [], require_path, module, module_path, module_name;
+    var attempts = [], module, module_path;
     for (var i = 0, len = this.paths.length; i < len; i++) {
-        module_name = dependency;
-        require_path = this.paths[i];
-        do {
-            module_path = path.join(require_path, module_name);
-            try {
-                module = require(module_path);
-                return callback(null, module, module_path);
-            } catch (e) {
-                if (typeof e !== 'object' ||
-                        e.code !== 'MODULE_NOT_FOUND' ||
-                        e.message.indexOf(module_path) === -1) {
-                    return callback(e);
-                }
-                attempts.push(module_path);
+        module_path = path.join(this.paths[i], dependency);
+        try {
+            module = require(module_path);
+            return callback(null, module, module_path);
+        } catch (e) {
+            if (typeof e !== 'object' ||
+                    e.code !== 'MODULE_NOT_FOUND' ||
+                    e.message.indexOf(module_path) === -1) {
+                return callback(e);
             }
-        } while (module_name !== (module_name = module_name.replace('_', path.sep)));
+            attempts.push(module_path);
+        }
     }
     var requires = attempts.map(function (module_path) {
         return util.format('require("%s")', module_path);

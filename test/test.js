@@ -105,21 +105,7 @@ describe('Modularity', function () {
             });
     });
 
-    it('should load dependencies from subdirectories', function (done) {
-        loadTest(7, function (foo) {
-            assert.equal(foo, 'bar');
-            done();
-        });
-    });
-
-    it('should replace underscores with path separators when resolving dependencies', function (done) {
-        loadTest(8, function (foo) {
-            assert.equal(foo, 'bazfooqux');
-            done();
-        });
-    });
-
-    it('should support angular.js style array syntax', function (done) {
+    it('should support angular.js style array syntax for subdirectories', function (done) {
         loadTest(9, function (foo) {
             assert.equal(foo, 'bazfooqux');
             done();
