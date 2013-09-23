@@ -149,6 +149,10 @@ Modularity.prototype.require = function (parent, dependency, ancestors, callback
                     var cache_key = path.join(dependency, file)
                       , file_path = path.join(module_path, file)
                       , file_module = require(file_path);
+                    if (cache_key in self.cache) {
+                        module[file] = self.cache[cache_key];
+                        return next();
+                    }
                     self.loadModule(cache_key, dir_ancestors, file_module, file_path, function (err) {
                         if (err) {
                             return callback(err);

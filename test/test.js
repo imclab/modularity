@@ -164,5 +164,17 @@ describe('Modularity', function () {
         });
     });
 
+    it('should let you inject modules from a directory', function (done) {
+        var inject = {};
+        inject['foo/qux'] = 'injected';
+        modularity
+            .include(path.join(__dirname, 'fixtures', '10'))
+            .inject(inject)
+            .load(function (foo) {
+                assert.equal(foo.bar, 'barinjected');
+                done();
+            });
+    });
+
 });
 
