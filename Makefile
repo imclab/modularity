@@ -3,11 +3,11 @@ ifdef V
 	REPORTER=spec
 endif
 
-test:
+test: check-deps
 	@./node_modules/.bin/_mocha \
 		--reporter $(REPORTER) test
 
-coverage:
+coverage: check-deps
 	@./node_modules/.bin/istanbul cover \
 		./node_modules/.bin/_mocha -- -R spec
 
@@ -19,4 +19,13 @@ clean:
 
 check: test
 
-.PHONY: test coverage
+lint: check-deps
+	@./node_modules/.bin/jshint -c ./.jshintrc index.js test/*.js
+
+check-deps:
+	@if test ! -d node_modules; then \
+		echo "Installing npm dependencies.."; \
+		npm install -d; \
+	fi
+
+.PHONY: test coverage lint
