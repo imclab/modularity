@@ -1,6 +1,6 @@
 {
   "name": "modularity",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Module loader",
   "main": "index.js",
   "scripts": {
