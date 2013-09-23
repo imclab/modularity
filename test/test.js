@@ -136,11 +136,30 @@ describe('Modularity', function () {
     });
 
     it('should load all modules in a directory', function (done) {
-        loadTest(10, function (foo) {
-            assert.equal(foo.bar, 'bar');
+        loadTest(10, function (foo, qux) {
+            assert.equal(foo.bar, 'barqux');
             assert.equal(foo.qux, 'qux');
+            assert.equal(qux, 'foobar');
             assert.equal(Object.keys(foo).length, 2);
             assert(!('empty' in foo));
+            done();
+        });
+    });
+
+    it('should fail when a directory contains a circular dependency', function (done) {
+        loadTest(11, function (foo) {
+            assert(false, 'Expected an error');
+        }).on('error', function (err) {
+            assert(err.message.indexOf('Circular dependency') !== -1);
+            done();
+        });
+    });
+
+    it('should fail when a directory module tries to include the directory', function (done) {
+        loadTest(12, function (foo) {
+            assert(false, 'Expected an error');
+        }).on('error', function (err) {
+            assert(err.message.indexOf('Circular dependency') !== -1);
             done();
         });
     });

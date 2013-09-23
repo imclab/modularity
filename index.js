@@ -135,6 +135,7 @@ Modularity.prototype.require = function (parent, dependency, ancestors, callback
             if (!stat.isDirectory()) {
                 return next();
             }
+            var dir_ancestors = ancestors.concat([ dependency ]);
             fs.readdir(module_path, function (err, files) {
                 if (err) {
                     return callback(err);
@@ -148,9 +149,9 @@ Modularity.prototype.require = function (parent, dependency, ancestors, callback
                     var cache_key = path.join(dependency, file)
                       , file_path = path.join(module_path, file)
                       , file_module = require(file_path);
-                    self.loadModule(cache_key, ancestors, file_module, file_path, function () {
+                    self.loadModule(cache_key, dir_ancestors, file_module, file_path, function (err) {
                         if (err) {
-                            return next(err);
+                            return callback(err);
                         }
                         module[file] = self.cache[cache_key];
                         next();

@@ -1,4 +1,2 @@
-module.exports = function () {
-    return 'qux';
-};
+module.exports = 'qux';
 

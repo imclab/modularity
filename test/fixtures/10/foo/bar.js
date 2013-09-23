@@ -1,4 +1,4 @@
-module.exports = function () {
-    return 'bar';
-};
+module.exports = [ 'foo/qux', function (qux) {
+    return 'bar' + qux;
+}];
 
