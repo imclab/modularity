@@ -1,6 +1,9 @@
 var EventEmitter = require('events').EventEmitter
   , util = require('util')
+  , fs = require('fs')
   , path = require('path');
+
+var js_ext = /\.js$/i;
 
 ['include', 'inject', 'load'].forEach(function (fn) {
     exports[fn] = function () {
@@ -43,12 +46,12 @@ Modularity.prototype.load = function (callback) {
         dependencies = parseArgs(callback);
     }
     process.nextTick(function () {
-        self.loadDependencies(dependencies, [], '(root)', function (err, modules) {
+        self.loadDependencies(dependencies, [], '(root)', function (err) {
             if (err) {
                 return self.emit('error', err);
             }
             callback.apply(null, dependencies.map(function (dependency) {
-                return modules[dependency];
+                return self.cache[dependency];
             }));
         });
     });
@@ -56,13 +59,12 @@ Modularity.prototype.load = function (callback) {
 };
 
 Modularity.prototype.loadDependencies = function (dependencies, ancestors, parent, callback) {
-    var loaded = {}, self = this;
+    var self = this;
     forEach(dependencies, function (dependency, next) {
         if (dependency === 'callback' || typeof dependency === 'function') {
             return next();
         }
         if (dependency in self.cache) {
-            loaded[dependency] = self.cache[dependency];
             return next();
         }
         if (ancestors.indexOf(dependency) !== -1) {
@@ -70,55 +72,51 @@ Modularity.prototype.loadDependencies = function (dependencies, ancestors, paren
               , error = new Error(util.format(message, dependency, parent));
             return next(error);
         }
-        self.require(parent, dependency, function (err, module, module_path) {
-            if (err) {
-                return next(err);
-            }
-            var module_deps;
-            if (Array.isArray(module) && typeof module[module.length - 1] === 'function') {
-                module_deps = module;
-                module = module[module.length - 1];
-            } else if (typeof module === 'function') {
-                module_deps = parseArgs(module);
-            } else {
-                loaded[dependency] = self.cache[dependency] = module;
-                return next();
-            }
-            var module_ancestors = ancestors.concat([ dependency ]);
-            self.loadDependencies(module_deps, module_ancestors,
-                    module_path, function (err, modules) {
-                if (err) {
-                    return next(err);
-                }
-                var is_async = module_deps.indexOf('callback') !== -1;
-                if (is_async) {
-                    modules.callback = function (err, module) {
-                        loaded[dependency] = self.cache[dependency] = module;
-                        next(err);
-                    };
-                }
-                var args = module_deps.map(function (dependency) {
-                    return modules[dependency];
-                });
-                var sync_return = module.apply(null, args);
-                if (!is_async) {
-                    loaded[dependency] = self.cache[dependency] = sync_return;
-                    next();
-                }
-            });
+        self.require(parent, dependency, ancestors, next);
+    }, callback);
+};
+
+Modularity.prototype.loadModule = function (dependency, ancestors, module, module_path, callback) {
+    var module_deps, self = this;
+    if (Array.isArray(module) && typeof module[module.length - 1] === 'function') {
+        module_deps = module;
+        module = module[module.length - 1];
+    } else if (typeof module === 'function') {
+        module_deps = parseArgs(module);
+    } else {
+        self.cache[dependency] = module;
+        return callback();
+    }
+    var module_ancestors = ancestors.concat([ dependency ]);
+    self.loadDependencies(module_deps, module_ancestors, module_path, function (err) {
+        if (err) {
+            return callback(err);
+        }
+        var is_async = module_deps.indexOf('callback') !== -1;
+        if (is_async) {
+            self.cache.callback = function (err, module) {
+                self.cache[dependency] = module;
+                callback(err);
+            };
+        }
+        var args = module_deps.map(function (dependency) {
+            return self.cache[dependency];
         });
-    }, function (err) {
-        callback(err, loaded);
+        var sync_return = module.apply(null, args);
+        if (!is_async) {
+            self.cache[dependency] = sync_return;
+            callback();
+        }
     });
 };
 
-Modularity.prototype.require = function (parent, dependency, callback) {
-    var attempts = [], module, module_path;
-    for (var i = 0, len = this.paths.length; i < len; i++) {
-        module_path = path.join(this.paths[i], dependency);
+Modularity.prototype.require = function (parent, dependency, ancestors, callback) {
+    var attempts = [], module, self = this;
+    forEach(this.paths, function (module_path, next) {
+        module_path = path.join(module_path, dependency);
         try {
             module = require(module_path);
-            return callback(null, module, module_path);
+            return self.loadModule(dependency, ancestors, module, module_path, callback);
         } catch (e) {
             if (typeof e !== 'object' ||
                     e.code !== 'MODULE_NOT_FOUND' ||
@@ -127,13 +125,50 @@ Modularity.prototype.require = function (parent, dependency, callback) {
             }
             attempts.push(module_path);
         }
-    }
-    var requires = attempts.map(function (module_path) {
-        return util.format('require("%s")', module_path);
-    }).join(', ');
-    var message = 'Failed to locate dependency "%s" when loading %s, tried %s'
-      , error = new Error(util.format(message, dependency, parent, requires));
-    callback(error);
+        fs.stat(module_path, function (err, stat) {
+            if (err) {
+                if (err.code !== 'ENOENT') {
+                    return callback(err);
+                }
+                return next();
+            }
+            if (!stat.isDirectory()) {
+                return next();
+            }
+            fs.readdir(module_path, function (err, files) {
+                if (err) {
+                    return callback(err);
+                }
+                module = {};
+                forEach(files, function (file, next) {
+                    if (!js_ext.test(file)) {
+                        return next();
+                    }
+                    file = file.replace(js_ext, '');
+                    var cache_key = path.join(dependency, file)
+                      , file_path = path.join(module_path, file)
+                      , file_module = require(file_path);
+                    self.loadModule(cache_key, ancestors, file_module, file_path, function () {
+                        if (err) {
+                            return next(err);
+                        }
+                        module[file] = self.cache[cache_key];
+                        next();
+                    });
+                }, function () {
+                    self.cache[dependency] = module;
+                    return callback();
+                });
+            });
+        });
+    }, function () {
+        var requires = attempts.map(function (module_path) {
+            return util.format('require("%s")', module_path);
+        }).join(', ');
+        var message = 'Failed to locate dependency "%s" when loading %s, tried %s'
+          , error = new Error(util.format(message, dependency, parent, requires));
+        callback(error);
+    });
 };
 
 function parseArgs(fn) {

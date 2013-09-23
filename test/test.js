@@ -135,5 +135,15 @@ describe('Modularity', function () {
         });
     });
 
+    it('should load all modules in a directory', function (done) {
+        loadTest(10, function (foo) {
+            assert.equal(foo.bar, 'bar');
+            assert.equal(foo.qux, 'qux');
+            assert.equal(Object.keys(foo).length, 2);
+            assert(!('empty' in foo));
+            done();
+        });
+    });
+
 });
 

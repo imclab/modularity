@@ -3,9 +3,14 @@ ifdef V
 	REPORTER=spec
 endif
 
+ifdef TEST
+	T=--grep '${TEST}'
+	REPORTER=list
+endif
+
 test: check-deps
 	@./node_modules/.bin/_mocha \
-		--reporter $(REPORTER) test
+		--reporter $(REPORTER) test $T
 
 coverage: check-deps
 	@./node_modules/.bin/istanbul cover \
